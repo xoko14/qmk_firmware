@@ -18,6 +18,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include QMK_KEYBOARD_H
 #include "keycodes.h"
+#include "badapple.h"
+
+#define parse_uint32(bytes, index) bytes[index+0] + (bytes[index+1] << 8) + (bytes[index+2] << 16) + (bytes[index+3] << 24)
+#define parse_uint16(bytes, index) bytes[index+0] + (bytes[index+1] << 8)
 
 enum layers{
     _QWERT,
@@ -140,7 +144,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 }
 
 #ifdef OLED_ENABLE
-static void render_logo(void) {
+/*static void render_logo(void) {
     static const char PROGMEM qmk_logo[] = {
         0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89, 0x8A, 0x8B, 0x8C, 0x8D, 0x8E, 0x8F, 0x90, 0x91, 0x92, 0x93, 0x94,
         0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7, 0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xAD, 0xAE, 0xAF, 0xB0, 0xB1, 0xB2, 0xB3, 0xB4,
@@ -148,7 +152,7 @@ static void render_logo(void) {
     };
 
     oled_write_P(qmk_logo, false);
-}
+}*/
 
 void render_master(void) {
     oled_write_P(PSTR("Layer: "), false);
@@ -180,10 +184,60 @@ void render_master(void) {
     oled_write_P(led_state.scroll_lock ? PSTR("SCR ") : PSTR("    "), false);
 }
 
-void render_slave(void){
-    render_logo();
+
+const uint8_t frame_height = badapple[0];
+const uint8_t frame_width = badapple[1];
+const uint32_t frame_count = parse_uint32(badapple, 3);
+const uint8_t header_offset = 7;
+
+uint32_t frame_current = 0;
+uint32_t frame_pointer = header_offset;
+
+uint16_t read_uint16(void){
+    frame_pointer += 2;
+    return parse_uint16(badapple, frame_pointer-2);
 }
 
+uint8_t read_uint8(void){
+    return badapple[frame_pointer++];
+}
+
+void render_badapple_frame(void) {
+    if(frame_current == frame_count){
+        frame_current = 0;
+        frame_pointer = header_offset;
+    }
+
+    uint16_t sections = read_uint16();
+    uint8_t current_x = 0;
+    uint8_t current_y = 0;
+    for(uint16_t i = 0; i<sections; i++){
+        uint8_t color = read_uint8();
+        bool is_on = color == 0x00;
+        uint16_t pixel_count = read_uint16();
+        for(uint16_t p = 0; p<pixel_count; p++){
+            uint8_t x = current_x;
+            uint8_t y = current_y;
+
+            if(x+1> frame_width) {
+                current_x = 0;
+                current_y++;
+            }
+            else {
+                current_x++;
+            }
+
+            oled_write_pixel(x, y, is_on);
+        }
+    }
+
+    frame_current++;
+}
+
+void render_slave(void){
+    //render_logo();
+    render_badapple_frame();
+}
 bool oled_task_user(void) {
     if(is_keyboard_master()){
         render_master();
