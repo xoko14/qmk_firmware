@@ -154,6 +154,14 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     oled_write_P(qmk_logo, false);
 }*/
 
+oled_rotation_t oled_init_user(oled_rotation_t rotation) {
+    if (!is_keyboard_master()) {
+        return OLED_ROTATION_270;  // flips the display 180 degrees if offhand
+    }
+
+    return rotation;
+}
+
 void render_master(void) {
     oled_write_P(PSTR("Layer: "), false);
 
@@ -213,13 +221,13 @@ void render_badapple_frame(void) {
     uint8_t current_y = 0;
     for(uint16_t i = 0; i<sections; i++){
         uint8_t color = read_uint8();
-        bool is_on = color == 0x00;
+        bool is_on = color != 0x00;
         uint16_t pixel_count = read_uint16();
         for(uint16_t p = 0; p<pixel_count; p++){
             uint8_t x = current_x;
             uint8_t y = current_y;
 
-            if(x+1> frame_width) {
+            if(x+1 >= frame_width) {
                 current_x = 0;
                 current_y++;
             }
