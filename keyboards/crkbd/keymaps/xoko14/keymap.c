@@ -190,6 +190,23 @@ void render_master(void) {
     oled_write_P(led_state.num_lock ? PSTR("NUM ") : PSTR("    "), false);
     oled_write_P(led_state.caps_lock ? PSTR("CAP ") : PSTR("    "), false);
     oled_write_P(led_state.scroll_lock ? PSTR("SCR ") : PSTR("    "), false);
+
+    oled_write_P(PSTR("\n"), false);
+
+    switch(get_unicode_input_mode()){
+        case UNICODE_MODE_LINUX:
+            oled_write_ln_P(PSTR("linux"), false);
+            break;
+        case UNICODE_MODE_MACOS:
+            oled_write_ln_P(PSTR("macos"), false);
+            break;
+        case UNICODE_MODE_WINCOMPOSE:
+            oled_write_ln_P(PSTR("windows"), false);
+            break;
+        default:
+            oled_write_ln_P(PSTR("unknown"), false);
+    }
+
 }
 
 
@@ -235,7 +252,7 @@ void render_badapple_frame(void) {
                 current_x++;
             }
 
-            oled_write_pixel(x, y, is_on);
+            oled_write_pixel(x + 1, y, is_on);
         }
     }
 
